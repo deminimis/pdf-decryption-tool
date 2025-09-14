@@ -1,32 +1,49 @@
 import pikepdf
 import os
+import sys
 
-def decrypt_pdf(input_file, output_file, password):
+def get_unique_filename(path):
+    if not os.path.exists(path):
+        return path
+    base, ext = os.path.splitext(path)
+    counter = 1
+    while os.path.exists(f"{base}({counter}){ext}"):
+        counter += 1
+    return f"{base}({counter}){ext}"
+
+def decrypt_pdf(input_file, password):
+    if not os.path.exists(input_file):
+        print(f"[-] Error: The file '{input_file}' was not found.")
+        return
+
     try:
-        # Open the PDF with the password
-        pdf = pikepdf.open(input_file, password=password)
+        pdf = pikepdf.open(input_file, password=password, allow_overwriting_input=True)
+        
+        if not pdf.is_encrypted:
+            print("[-] Info: This PDF is not encrypted. No action needed.")
+            pdf.close()
+            return
 
-        # Save a new copy without password or restrictions
+        base, ext = os.path.splitext(input_file)
+        output_file = get_unique_filename(f"{base}_decrypted{ext}")
+        
         pdf.save(output_file)
         pdf.close()
-
         print(f"[+] Success! Decrypted PDF saved as: {output_file}")
 
-    except pikepdf._qpdf.PasswordError:
+    except pikepdf.PasswordError:
         print("[-] Wrong password! Please check and try again.")
     except Exception as e:
-        print(f"[-] Error: {e}")
+        print(f"[-] An unexpected error occurred: {e}")
 
 
 if __name__ == "__main__":
     print("=== PDF Decryption Tool ===")
-
-    # Get input from user
-    input_file = input("Enter the path to the encrypted PDF: ").strip()
+    
+    if len(sys.argv) > 1:
+        input_file = sys.argv[1].strip().strip('"')
+    else:
+        input_file = input("Enter the path to the encrypted PDF: ").strip().strip('"')
+    
     password = input("Enter the PDF password: ").strip()
-
-    # Default output name (same name + '_decrypted.pdf')
-    base, ext = os.path.splitext(input_file)
-    output_file = base + "_decrypted.pdf"
-
-    decrypt_pdf(input_file, output_file, password)
+    decrypt_pdf(input_file, password)
